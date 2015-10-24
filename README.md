@@ -8,10 +8,12 @@ Encoding updates referenced from Ruby-SNMP (https://github.com/hallidave/ruby-sn
 User Guide:
 ---------------------
 
+Working Agent example coming soon.
+
 Setup:
 `SNMP.begin(snmp_read_community,snmp_read_write_community,snmp_trap_community,SNMP_DEFAULT_PORT)`
 
-Receiving SNMP Messages Example:
+Receiving an SNMP Message, Processing it, Responding:
 ```
 SNMP_API_STAT_CODES _api_status;
 SNMP_ERR_CODES _status;
