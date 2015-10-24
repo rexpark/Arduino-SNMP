@@ -967,6 +967,19 @@ typedef struct SNMP_PDU {
     value.size = add_data(t_v);
   }
 
+  /**
+   * Adds standard v2c inform data
+   *
+   * Original Auther: Rex Park
+   * Updated: October 24, 2015
+   */
+  void prepare_inform(SNMP_VALUE *t_v){
+    prepare_trapv2(t_v);
+
+    //overrides type set from prepare_trapv2
+    type = SNMP_PDU_INFORM_REQUEST;
+  }
+
   /** 
    * Encodes data for transmission with the trap.
    * Each trap data item:
