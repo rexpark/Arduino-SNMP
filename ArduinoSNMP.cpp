@@ -23,8 +23,7 @@
 
 EthernetUDP Udp;
 
-SNMP_API_STAT_CODES SNMPClass::begin(char *getCommName,
-        char *setCommName, char *trapCommName, uint16_t port)
+SNMP_API_STAT_CODES SNMPClass::begin(const char *getCommName, const char *setCommName, const char *trapCommName, uint16_t port)
 {
   //initialize request counter
     requestCounter = 1;
@@ -79,9 +78,11 @@ boolean SNMPClass::listen(void)
 }
 
 /**
- * Extra data: Can be used for storing PDU data directly into another buffer. 
- *  Useful if you have a large object that needs to be worked on elsewhere.
- */
+   * Parses incoming SNMP messages.
+   *
+   * Original Auther: Rex Park
+   * Updated: November 7, 2015 (Added support for Inform responses (SNMP_PDU_RESPONSE)
+   */
 SNMP_API_STAT_CODES SNMPClass::requestPdu(SNMP_PDU *pdu, char *extra_data, int extra_data_max_size)
 {
   // sequence length
@@ -221,9 +222,19 @@ SNMP_API_STAT_CODES SNMPClass::requestPdu(SNMP_PDU *pdu, char *extra_data, int e
     valLen = _packet[obiEnd + 2];
     valEnd = obiEnd + 2 + valLen;
   }
+  
+//  Serial.println(verEnd);
+//  Serial.println(comEnd);
+//  Serial.println(ridEnd);
+//  Serial.println(errEnd);
+//  Serial.println(eriEnd);
+//  Serial.println(obiEnd);
+//  Serial.println(pduEnd);
+//  Serial.println(pduTyp,HEX);
 
   // extract version
   pdu->version = _packet[verEnd];
+//  Serial.println(pdu->version,HEX);
   // validate version
   if(pdu->version != 0x0 && pdu->version != 0x1){
     return SNMP_API_STAT_PACKET_INVALID;
@@ -243,16 +254,22 @@ SNMP_API_STAT_CODES SNMPClass::requestPdu(SNMP_PDU *pdu, char *extra_data, int e
 
   // validate community name
   if ( pdu->type == SNMP_PDU_SET && comLen == _setSize ) {
-	if(memcmp(_setCommName,_packet+verEnd+3,_setSize) != 0){
-		pdu->error = SNMP_ERR_NO_SUCH_NAME;
-		return SNMP_API_STAT_NO_SUCH_NAME;
-	}
+  	if(memcmp(_setCommName,_packet+verEnd+3,_setSize) != 0){
+  		pdu->error = SNMP_ERR_NO_SUCH_NAME;
+  		return SNMP_API_STAT_NO_SUCH_NAME;
+  	}
   } else if ( pdu->type == SNMP_PDU_GET) {
-	if(memcmp(_getCommName,_packet+verEnd+3,comLen) != 0 && memcmp(_setCommName,_packet+verEnd+3,comLen) != 0){
-		pdu->error = SNMP_ERR_NO_SUCH_NAME;
-		return SNMP_API_STAT_NO_SUCH_NAME;
-	}
-  } else {
+  	if(memcmp(_getCommName,_packet+verEnd+3,comLen) != 0 && memcmp(_setCommName,_packet+verEnd+3,comLen) != 0){
+  		pdu->error = SNMP_ERR_NO_SUCH_NAME;
+  		return SNMP_API_STAT_NO_SUCH_NAME;
+  	}
+  } else if (pdu->type == SNMP_PDU_RESPONSE){
+    if(memcmp(_trapCommName,_packet+verEnd+3,comLen) != 0){
+      pdu->error = SNMP_ERR_NO_SUCH_NAME;
+      return SNMP_API_STAT_NO_SUCH_NAME;
+    }
+  }
+  else {
     // set pdu error
     pdu->error = SNMP_ERR_NO_SUCH_NAME;
     //
@@ -333,7 +350,7 @@ SNMP_API_STAT_CODES SNMPClass::requestPdu(SNMP_PDU *pdu, char *extra_data, int e
  *
  * Broken as of November 10th 2013 due to writeHeaders re-write. Needs to be modified to work like responsePdu
  */
-SNMP_API_STAT_CODES SNMPClass::sendTrapv1(SNMP_PDU *pdu, SNMP_TRAP_TYPES trap_type, int16_t specific_trap, IPAddress manager_address){
+uint32_t SNMPClass::sendTrapv1(SNMP_PDU *pdu, SNMP_TRAP_TYPES trap_type, int16_t specific_trap, IPAddress manager_address){
 
   byte i;
   SNMP_VALUE value;
@@ -359,7 +376,7 @@ SNMP_API_STAT_CODES SNMPClass::sendTrapv1(SNMP_PDU *pdu, SNMP_TRAP_TYPES trap_ty
   _packetPos += value.size;
   
   //trap type
-  value.encode(SNMP_SYNTAX_INT, trap_type, _packet + _packetPos);
+  value.encode(SNMP_SYNTAX_INT, (int16_t)trap_type, _packet + _packetPos);
   _packetPos += value.size;
   
   //specific trap id
@@ -379,8 +396,17 @@ SNMP_API_STAT_CODES SNMPClass::sendTrapv1(SNMP_PDU *pdu, SNMP_TRAP_TYPES trap_ty
     _packet[_packetPos++] = pdu->value.data[i];
   }
 
-  return writePacket(manager_address, SNMP_MANAGER_PORT);
+  writePacket(manager_address, SNMP_MANAGER_PORT);
+
+  return pdu->requestId;
 }
+
+/**
+   * Generates SNMP header data.
+   *
+   * Original Auther: Rex Park
+   * Updated: November 7, 2015 (Added support for Informs (SNMP_PDU_INFORM_REQUEST)
+   */
 
 uint16_t SNMPClass::writeHeaders(SNMP_PDU *pdu)
 {
@@ -392,7 +418,7 @@ uint16_t SNMPClass::writeHeaders(SNMP_PDU *pdu)
       _packet[_packetPos--] = (byte)_setCommName[i];
     }
     _packet[_packetPos--] = (byte)_setSize;	// length
-  }else if(_dstType == SNMP_PDU_TRAP || _dstType == SNMP_PDU_TRAP2){
+  }else if(_dstType == SNMP_PDU_TRAP || _dstType == SNMP_PDU_TRAP2 || _dstType == SNMP_PDU_INFORM_REQUEST){
     for(i = _trapSize-1; i >= 0 && i <= 30; i--){
       _packet[_packetPos--] = (byte)_trapCommName[i];
     }
@@ -412,8 +438,9 @@ uint16_t SNMPClass::writeHeaders(SNMP_PDU *pdu)
   
   //start of header
   //length of all data after this point
-  _packet[_packetPos--] = lsb(packet_length()+_extra_data_size);
-  _packet[_packetPos--] = msb(packet_length()+_extra_data_size);
+  _packet[_packetPos] = lsb(packet_length()+_extra_data_size);
+  _packet[_packetPos-1] = msb(packet_length()+_extra_data_size);
+  _packetPos -= 2;
   _packet[_packetPos--] = 0x82;//Sending length in two octets
 
   _packet[_packetPos--] = (byte)SNMP_SYNTAX_SEQUENCE;
@@ -430,7 +457,7 @@ uint16_t SNMPClass::writeHeaders(SNMP_PDU *pdu)
   return _packetPos;
 }
 
-SNMP_API_STAT_CODES SNMPClass::responsePdu(SNMP_PDU *pdu, IPAddress to_address, uint16_t to_port, byte *temp_buff, char *extra_data)
+uint32_t SNMPClass::send_message(SNMP_PDU *pdu, IPAddress to_address, uint16_t to_port, byte *temp_buff, char *extra_data)
 {
   memset(_packet, 0, SNMP_MAX_PACKET_LEN);
   _packetPos = SNMP_MAX_PACKET_LEN-1;
@@ -445,7 +472,7 @@ SNMP_API_STAT_CODES SNMPClass::responsePdu(SNMP_PDU *pdu, IPAddress to_address, 
   // Varbind List
   if(pdu->type == SNMP_PDU_RESPONSE){
     
-    t = pdu->add_data(&pdu->value,_packet + _packetPos,true,temp_buff, _extra_data_size);
+    t = pdu->add_data_private(&pdu->value,_packet + _packetPos,true,temp_buff, _extra_data_size);
     _packetPos -= t;
     
     
@@ -454,7 +481,7 @@ SNMP_API_STAT_CODES SNMPClass::responsePdu(SNMP_PDU *pdu, IPAddress to_address, 
     _packet[_packetPos--] = msb(t+_extra_data_size);
     _packet[_packetPos--] = 0x82;//Sending length in two octets
     
-  }else if(pdu->type == SNMP_PDU_TRAP2){
+  }else if(pdu->type == SNMP_PDU_TRAP2 || pdu->type == SNMP_PDU_INFORM_REQUEST){
     //set and increment requestId
     pdu->requestId = requestCounter++;
       
@@ -497,8 +524,9 @@ SNMP_API_STAT_CODES SNMPClass::responsePdu(SNMP_PDU *pdu, IPAddress to_address, 
   _packet[_packetPos--] = (byte)SNMP_SYNTAX_INT;// type
 
   //length value of all previous data
-  _packet[_packetPos--] = lsb(packet_length()+_extra_data_size);
-  _packet[_packetPos--] = msb(packet_length()+_extra_data_size);
+  _packet[_packetPos] = lsb(packet_length()+_extra_data_size);
+  _packet[_packetPos-1] = msb(packet_length()+_extra_data_size);
+  _packetPos -= 2;
   _packet[_packetPos--] = 0x82;//Sending length in two octets
     
   // SNMP PDU type
@@ -511,10 +539,31 @@ SNMP_API_STAT_CODES SNMPClass::responsePdu(SNMP_PDU *pdu, IPAddress to_address, 
     
   _packetSize = packet_length();
   
-  return writePacket(to_address, to_port, extra_data);
+//  Serial.println("Outgoing: ");
+//  for(byte i = 0; i < _packetSize; i++){
+//    Serial.print(_packet[_packetPos+1+i],HEX);
+//    Serial.print("-");
+//  }
+//  Serial.println();
+  
+  this->writePacket(to_address, to_port, extra_data);
+
+  return pdu->requestId;
 }
 
-SNMP_API_STAT_CODES SNMPClass::writePacket(IPAddress address, uint16_t port, char *extra_data)
+/**
+ * Copies an external byte array into _packet and then sends it out.
+ * 
+ * Original Auther: Rex Park
+ * Added: November 8, 2015 (Designed to be used with a system that resends informs that haven't been acknowledged)
+ */
+void SNMPClass::send_message(IPAddress address, uint16_t port, byte *packet, uint16_t packet_size){
+  Udp.beginPacket(address, port);
+  Udp.write(packet, packet_size);
+  Udp.endPacket();
+}
+
+void SNMPClass::writePacket(IPAddress address, uint16_t port, char *extra_data)
 {
   Udp.beginPacket(address, port);
   Udp.write(_packet+_packetPos+1, _packetSize);
@@ -524,8 +573,11 @@ SNMP_API_STAT_CODES SNMPClass::writePacket(IPAddress address, uint16_t port, cha
   }
   
   Udp.endPacket();
-  
-  return SNMP_API_STAT_SUCCESS;
+}
+
+void SNMPClass::resend_message(IPAddress address, uint16_t port, char *extra_data)
+{
+  this->writePacket(address, port, extra_data);
 }
 
 void SNMPClass::onPduReceive(onPduReceiveCallback pduReceived)
@@ -536,6 +588,16 @@ void SNMPClass::onPduReceive(onPduReceiveCallback pduReceived)
 void SNMPClass::freePdu(SNMP_PDU *pdu)
 {
   pdu->clear();
+}
+
+uint16_t SNMPClass::copy_packet(byte *packet_store){
+  memcpy(packet_store,_packet+_packetPos+1,_packetSize);
+
+  return _packetSize;
+}
+
+void SNMPClass::clear_packet(){
+  memset(_packet,0,SNMP_MAX_PACKET_LEN);
 }
 
 IPAddress SNMPClass::remoteIP(){

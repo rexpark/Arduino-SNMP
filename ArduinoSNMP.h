@@ -1,5 +1,5 @@
 /*
-  ArduinoSNMP.h - An Arduino library for a lightweight SNMP Agent.
+  ArduinoSNMP.h - An Arduino library for a lightweight SNMP Agent. v2.0
   Copyright (C) 2013 Rex Park <rex.park@me.com>, Portions (C) 2010 Eric C. Gionet <lavco_eg@hotmail.com>
   All rights reserved.
 
@@ -275,7 +275,7 @@ typedef struct SNMP_OID {
    * Original Author: Agentuino Project
    * Updated: Rex Park, April 4, 2013 (re-wrote integer parsing)
    */
-  byte fromString(char *buffer){
+  byte fromString(const char *buffer){
     clear();
     
     byte b_size = strlen(buffer);
@@ -288,6 +288,7 @@ typedef struct SNMP_OID {
         n = 0;
       }else if(n < 5){
         t[n++] = buffer[i];
+        delay(10);//Delay needed to function on Due
       }
     }
     
@@ -402,10 +403,18 @@ typedef struct SNMP_VALUE {
    * Updated: Rex Park, April 3, 2013 (updated to account for storing syntax and length in data array)
    * Updated: November 13, 2013 (After resolving issues with the requestPdu and responsePdu methods, size and data are no longer stored in data for decodes)
    * Updated: December 13, 2013 (Modified decoding function to be accurate.)
+   * Updated: November 18, 2015 (Fixed negative value decoding)
    */
   SNMP_ERR_CODES decode(int16_t *value) {
+    Serial.println("I'm Here");
     if ( syntax == SNMP_SYNTAX_INT ) {
       memset(value, 0, sizeof(*value));
+      byte temp = (1 << 7) & data[0];
+      
+      if(temp != 0){
+        *value = 0xFF;
+      }
+      
       for(i = 0;i < size;i++)
       {
         *value = *value<<8 | data[i];
@@ -915,6 +924,7 @@ typedef struct SNMP_VALUE {
   
   // clear's buffer and sets size to 0
   void clear(void) {
+    //OID.clear(); Breaks encoding
     memset(data, 0, SNMP_MAX_VALUE_LEN);
     size = 0;
     i = 0;
@@ -957,14 +967,14 @@ typedef struct SNMP_PDU {
     t_v->clear();
     t_v->OID.fromString("1.3.6.1.2.1.1.3.0");//OID of the value type being sent
     t_v->encode(SNMP_SYNTAX_TIME_TICKS, millis()/10);
-    value.size = add_data(t_v);
+    value.size = add_data_private(t_v);
     
     //SNMPv2 trapOID
     t_v->OID.clear();
     t_v->clear();
     t_v->OID.fromString("1.3.6.1.6.3.1.1.4.1.0");//OID of the value type being sent
     t_v->size = value.OID.encode(t_v->data);
-    value.size = add_data(t_v);
+    value.size = add_data_private(t_v);
   }
 
   /**
@@ -995,9 +1005,32 @@ typedef struct SNMP_PDU {
    * Reverse section adds compatibility to responsePDU rewrite.
    *
    * Original Auther: Rex Park
+   * Updated: October 26, 2015 (Created: Calls add_data_private and then updates value.size. One less step for end user.)
+   */
+    void add_data(SNMP_VALUE *data, byte *buffer=NULL, boolean reverse = false, byte *temp_buffer = NULL, int extra_data_size = 0){
+    
+      value.size = add_data_private(data,buffer,reverse,temp_buffer,extra_data_size);
+    }
+
+  /** 
+   * Encodes data for transmission with the trap.
+   * Each trap data item:
+   * SNMP_SYNTAX_SEQUENCE
+   * length_of_sequence (remainder, does not include previous syntax type or length byte) 
+   * OID Syntax
+   * OID length
+   * OID encoded bytes
+   * Data Syntax
+   * Data length
+   * Data encoded bytes
+   *
+   * Reverse section adds compatibility to responsePDU rewrite.
+   *
+   * Original Auther: Rex Park
+   * Updated: October 26, 2015 (Renamed to add_data_private)
    * Updated: November 4, 2013
    */
-  byte add_data(SNMP_VALUE *data, byte *buffer=NULL, boolean reverse = false, byte *temp_buffer = NULL, int extra_data_size = 0){
+  byte add_data_private(SNMP_VALUE *data, byte *buffer=NULL, boolean reverse = false, byte *temp_buffer = NULL, int extra_data_size = 0){
     int index = 0;
     byte start_index = index;
     byte t_index = 0;
@@ -1022,8 +1055,9 @@ typedef struct SNMP_PDU {
       }
 
       //length of remainder of value
-      buffer[index--] = lsb(start_index - index + extra_data_size);
-      buffer[index--] = msb(start_index - index + extra_data_size);
+      buffer[index] = lsb(start_index - index + extra_data_size);
+      buffer[index-1] = msb(start_index - index + extra_data_size);
+      index -= 2;
       buffer[index--] = 0x82;//Sending length in two octets
       buffer[index--] = SNMP_SYNTAX_SEQUENCE;  
       
@@ -1070,25 +1104,24 @@ typedef struct SNMP_PDU {
 
 class SNMPClass {
 public:
-  // Agent functions
-//  SNMP_API_STAT_CODES begin();
-  SNMP_API_STAT_CODES begin(char *getCommName,
-  char *setCommName, char *trapComName, uint16_t port);
+  SNMP_API_STAT_CODES begin(const char *getCommName,const char *setCommName,const char *trapComName, uint16_t port);
   boolean listen(void);
   SNMP_API_STAT_CODES requestPdu(SNMP_PDU *pdu, char *extra_data = NULL, int extra_data_max_size = 0);
-  SNMP_API_STAT_CODES responsePdu(SNMP_PDU *pdu, IPAddress to_address, uint16_t to_port, byte* b = NULL, char *extra_data = NULL);
-  SNMP_API_STAT_CODES sendTrapv1(SNMP_PDU *pdu, SNMP_TRAP_TYPES trap_type, int16_t specific_trap, IPAddress manager_address);
+  void send_message(IPAddress address, uint16_t port, byte *packet, uint16_t packet_size);
+  uint32_t send_message(SNMP_PDU *pdu, IPAddress to_address, uint16_t to_port, byte* b = NULL, char *extra_data = NULL);
+  void resend_message(IPAddress address, uint16_t port, char *extra_data = NULL);
+  uint32_t sendTrapv1(SNMP_PDU *pdu, SNMP_TRAP_TYPES trap_type, int16_t specific_trap, IPAddress manager_address);
   void onPduReceive(onPduReceiveCallback pduReceived);
   void freePdu(SNMP_PDU *pdu);
+  void clear_packet();
+  uint16_t copy_packet(byte *packet_store);
   IPAddress remoteIP();
   uint16_t remotePort();
   uint32_t requestCounter;
 
-  // Helper functions
-
 private:
   uint16_t writeHeaders(SNMP_PDU *pdu);
-  SNMP_API_STAT_CODES writePacket(IPAddress address, uint16_t port, char *extra_data = NULL);
+  void writePacket(IPAddress address, uint16_t port, char *extra_data = NULL);
   byte _packet[SNMP_MAX_PACKET_LEN];
   uint16_t _packetSize;
   uint16_t _packetPos;
@@ -1096,11 +1129,11 @@ private:
   SNMP_PDU_TYPES _dstType;
   uint8_t _dstIp[4];
   uint16_t _dstPort;
-  char *_getCommName;
+  const char *_getCommName;
   size_t _getSize;
-  char *_setCommName;
+  const char *_setCommName;
   size_t _setSize;
-  char *_trapCommName;
+  const char *_trapCommName;
   size_t _trapSize;
   onPduReceiveCallback _callback;
   uint16_t packet_length();
