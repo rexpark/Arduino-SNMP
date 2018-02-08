@@ -8,6 +8,8 @@ Encoding updates referenced from Ruby-SNMP (https://github.com/hallidave/ruby-sn
 User Guide:
 ---------------------
 
+February 7 2018 Update: I've added the latest version of this library as well as a real world agent implementation (Example/Actual_SNMP_Agent). I'll try to answer any questions posted to the issues list. It's been a while since I've needed to work on this library so I'm not sure how accurate the information below is.
+
 Working Agent example coming soon.
 
 Setup:
@@ -23,7 +25,7 @@ char _oid[SNMP_MAX_OID_LEN];
 //SNMP.listen() should be called often. Typically from Arduino's loop().
 if(SNMP.listen() == true){
   _api_status = SNMP.requestPdu(&_pdu,NULL,0);
-  
+
   if(_api_status != SNMP_API_STAT_SUCCESS || _pdu.error != SNMP_ERR_NO_ERROR){
     //Message can not be processed.
   }
@@ -52,23 +54,23 @@ if(SNMP.listen() == true){
       _pdu.error = SNMP_ERR_GEN_ERROR;
     }
   }
-  
+
   //Send the response.
   if(!(_api_status == SNMP_API_STAT_NO_SUCH_NAME || _api_status == SNMP_API_STAT_PACKET_INVALID)){
-    
+
     //temp_buffer = byte array that can be used to hold data for processing.
     //Cuts down on the amount of memory required exclusively for ArduinoSNMP.
     byte temp_buffer[100];
-    
+
     _pdu.type = SNMP_PDU_RESPONSE;
-    
+
     if(_pdu.error != SNMP_ERR_NO_ERROR){
       _pdu.value.encode(SNMP_SYNTAX_NULL);
     }
 
     SNMP.responsePdu(&_pdu, SNMP.remoteIP(), SNMP.remotePort(),temp_buffer);
   }
-  
+
   //clear _pdu
   SNMP.freePdu(&_pdu);
 }
@@ -90,7 +92,7 @@ _pdu.prepare_trapv2(&_value);
 _value.OID.fromString_P(PSTR("YOUR_DATA_OID_HERE"));//OID of the value type being sent
 _value.encode(SNMP_SYNTAX_INT, 10);//Sending an integer value of 10
 _pdu.value.size = _pdu.add_data(&_value);
-  
+
 //Value 2
 _value.OID.fromString_P(PSTR("YOUR_DATA_OID_HERE"));//OID of the value type being sent
 _value.encode(SNMP_SYNTAX_OCTETS, "Hi There");//Send a character array
