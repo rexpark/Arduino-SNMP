@@ -1,4 +1,4 @@
-ArduinoSNMP v1.2
+ArduinoSNMP v2.2
 =============
 
 An updated and enhanced version of the Agentuino (http://code.google.com/p/agentuino/) SNMP library.
