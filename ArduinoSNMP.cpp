@@ -26,9 +26,9 @@ EthernetUDP Udp;
 SNMP_API_STAT_CODES SNMPClass::begin(const char *getCommName, const char *setCommName, const char *trapCommName, uint16_t port)
 {
   //initialize request counter
-    requestCounter = 1;
-    _extra_data_size = 0;
-    _udp_extra_data_packet = false;
+  requestCounter = 1;
+  _extra_data_size = 0;
+  _udp_extra_data_packet = false;
     
   // set community name set/get sizes
   _setSize = strlen(setCommName);
@@ -340,7 +340,7 @@ SNMP_API_STAT_CODES SNMPClass::requestPdu(SNMP_PDU *pdu, char *extra_data, int e
 }
 
 /**
- * Sends a PDU as a v1 trap. (needs testing after v2 trap changes)
+ * Sends a PDU as a v1 trap.
  *   OID: The full enterprise OID for the trap you want to send: everything in the trap's OID from the initial .1 
  *     up to the enterprise number, including any subtrees within the enterprise but not the specific trap number.
  *   value: will be an array of pre-encoded data
@@ -348,7 +348,6 @@ SNMP_API_STAT_CODES SNMPClass::requestPdu(SNMP_PDU *pdu, char *extra_data, int e
  * Original Author: Yazgoo
  * Updated: Rex Park, March 29, 2013. (Adjusting for new encoding changes and PDU structure)
  *
- * Broken as of November 10th 2013 due to writeHeaders re-write. Needs to be modified to work like responsePdu
  */
 uint32_t SNMPClass::sendTrapv1(SNMP_PDU *pdu, SNMP_TRAP_TYPES trap_type, int16_t specific_trap, IPAddress manager_address){
 

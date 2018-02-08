@@ -137,12 +137,12 @@ void SNMPAgent::process_snmp_pdu(){
     
     if(_send_tag_data == true){
       #ifdef UTRACK
-      SNMP.responsePdu(&_pdu, SNMP.remoteIP(), SNMP.remotePort(),(byte*)big_buffer, tag_data_buffer);
+      SNMP.send_message(&_pdu, SNMP.remoteIP(), SNMP.remotePort(),(byte*)big_buffer, tag_data_buffer);
       #endif
       _send_tag_data = false;
     }
     else{
-      SNMP.responsePdu(&_pdu, SNMP.remoteIP(), SNMP.remotePort(),(byte*)big_buffer);
+      SNMP.send_message(&_pdu, SNMP.remoteIP(), SNMP.remotePort(),(byte*)big_buffer);
     }
   }
   
@@ -299,7 +299,7 @@ void SNMPAgent::warm_start(){
   g_pdu.prepare_trapv2(&g_value);
 
   //send it
-  SNMP.responsePdu(&g_pdu,broadcast,snmp_port);
+  SNMP.send_message(&g_pdu,broadcast,snmp_port);
 }
 
 /**
