@@ -1,5 +1,5 @@
 /*
-  ArduinoSNMP.h - An Arduino library for a lightweight SNMP Agent. v2.0
+  ArduinoSNMP.h - An Arduino library for a lightweight SNMP Agent. v2.2
   Copyright (C) 2013 Rex Park <rex.park@me.com>, Portions (C) 2010 Eric C. Gionet <lavco_eg@hotmail.com>
   All rights reserved.
 

@@ -1,5 +1,5 @@
 /*
-  ArduinoSNMP.cpp - An Arduino library for a lightweight SNMP Agent.
+  ArduinoSNMP.cpp - An Arduino library for a lightweight SNMP Agent. v2.2
   Copyright (C) 2013 Rex Park <rex.park@me.com>, Portions (C) 2010 Eric C. Gionet <lavco_eg@hotmail.com>
   All rights reserved.
 
@@ -26,9 +26,9 @@ EthernetUDP Udp;
 SNMP_API_STAT_CODES SNMPClass::begin(const char *getCommName, const char *setCommName, const char *trapCommName, uint16_t port)
 {
   //initialize request counter
-  requestCounter = 1;
-  _extra_data_size = 0;
-  _udp_extra_data_packet = false;
+    requestCounter = 1;
+    _extra_data_size = 0;
+    _udp_extra_data_packet = false;
     
   // set community name set/get sizes
   _setSize = strlen(setCommName);
@@ -49,6 +49,7 @@ SNMP_API_STAT_CODES SNMPClass::begin(const char *getCommName, const char *setCom
   if ( port == NULL || port == 0 ) port = SNMP_DEFAULT_PORT;
   //
   // init UDP socket
+  Udp.close();
   Udp.begin(port);
 
   return SNMP_API_STAT_SUCCESS;
@@ -86,20 +87,20 @@ boolean SNMPClass::listen(void)
 SNMP_API_STAT_CODES SNMPClass::requestPdu(SNMP_PDU *pdu, char *extra_data, int extra_data_max_size)
 {
   // sequence length
-  uint16_t seqLen;
+  uint16_t seqLen, valLen, vblLen, pduLen;
   // version
   byte verLen, verEnd;
   // community string
   byte comLen, comEnd;
   // pdu
-  byte pduTyp, pduLen, pduEnd;
+  byte pduTyp, pduEnd;
   byte ridLen, ridEnd;
   byte errLen, errEnd;
   byte eriLen, eriEnd;
-  byte vblTyp, vblLen;
+  byte vblTyp;
   byte vbiTyp, vbiLen;
   byte obiLen, obiEnd;
-  byte valTyp, valLen, valEnd;
+  byte valTyp, valEnd;
   int i;
 
   // set packet packet size (skip UDP header)
@@ -144,9 +145,13 @@ SNMP_API_STAT_CODES SNMPClass::requestPdu(SNMP_PDU *pdu, char *extra_data, int e
   
 
   // sequence length
-  if(_packet[1] > 0x80){
+  if(_packet[1] >= 0x82){
     seqLen = combine_msb_lsb(_packet[2], _packet[3]);
     _packetPos = 4;
+  }
+  else if(_packet[1] == 0x81){
+    seqLen = _packet[2];
+    _packetPos = 3;
   }else{
     seqLen = _packet[1];
     _packetPos = 2;
@@ -166,10 +171,15 @@ SNMP_API_STAT_CODES SNMPClass::requestPdu(SNMP_PDU *pdu, char *extra_data, int e
   
   // pdu
   pduTyp = _packet[comEnd + 1];
-  if(_packet[comEnd + 2] > 0x80){
+  if(_packet[comEnd + 2] >= 0x82){
     pduLen = combine_msb_lsb(_packet[comEnd +3], _packet[comEnd +4]);
     pduEnd = comEnd + 2 + pduLen + 2;
     _packetPos = comEnd + 2 + 2;
+  }
+  else if(_packet[comEnd + 2] == 0x81){
+    pduLen = _packet[comEnd +3];
+    pduEnd = comEnd + 2 + pduLen + 1;
+    _packetPos = comEnd + 2 + 1;
   }else{
     pduLen = _packet[comEnd + 2];
     pduEnd = comEnd + 2 + pduLen;
@@ -190,9 +200,13 @@ SNMP_API_STAT_CODES SNMPClass::requestPdu(SNMP_PDU *pdu, char *extra_data, int e
   
   //variable bindings
   vblTyp = _packet[eriEnd + 1];
-  if(_packet[eriEnd + 2] > 0x80){
+  if(_packet[eriEnd + 2] >= 0x82){
     vblLen = combine_msb_lsb(_packet[eriEnd +3], _packet[eriEnd +4]);
     _packetPos = eriEnd + 2 + 2;
+  }
+  else if(_packet[eriEnd + 2] == 0x81){
+    vblLen = _packet[eriEnd +3];
+    _packetPos = eriEnd + 2 + 1;
   }else{
     vblLen = _packet[eriEnd + 2];
     _packetPos = eriEnd + 2;
@@ -214,10 +228,14 @@ SNMP_API_STAT_CODES SNMPClass::requestPdu(SNMP_PDU *pdu, char *extra_data, int e
   
   //unknown
   valTyp = _packet[obiEnd + 1];
-  
-  if(_packet[obiEnd + 2] > 0x80){
+
+  if(_packet[obiEnd + 2] >= 0x82){
     valLen = combine_msb_lsb(_packet[obiEnd +3], _packet[obiEnd +4]);
     valEnd = obiEnd + 2 + valLen + 2;
+  }
+  else if(_packet[obiEnd + 2] == 0x81){
+    valLen = _packet[obiEnd + 3];
+    valEnd = obiEnd + 2 + valLen + 1;
   }else{
     valLen = _packet[obiEnd + 2];
     valEnd = obiEnd + 2 + valLen;
@@ -340,7 +358,7 @@ SNMP_API_STAT_CODES SNMPClass::requestPdu(SNMP_PDU *pdu, char *extra_data, int e
 }
 
 /**
- * Sends a PDU as a v1 trap.
+ * Sends a PDU as a v1 trap. (needs testing after v2 trap changes)
  *   OID: The full enterprise OID for the trap you want to send: everything in the trap's OID from the initial .1 
  *     up to the enterprise number, including any subtrees within the enterprise but not the specific trap number.
  *   value: will be an array of pre-encoded data
@@ -348,6 +366,7 @@ SNMP_API_STAT_CODES SNMPClass::requestPdu(SNMP_PDU *pdu, char *extra_data, int e
  * Original Author: Yazgoo
  * Updated: Rex Park, March 29, 2013. (Adjusting for new encoding changes and PDU structure)
  *
+ * Broken as of November 10th 2013 due to writeHeaders re-write. Needs to be modified to work like responsePdu
  */
 uint32_t SNMPClass::sendTrapv1(SNMP_PDU *pdu, SNMP_TRAP_TYPES trap_type, int16_t specific_trap, IPAddress manager_address){
 
