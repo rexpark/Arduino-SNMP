@@ -2,12 +2,13 @@
 
 //System Global Setup vars
 //These should be saved/loaded from EEPROM or an SD Card.
-IPAddress ip(192, 168, 0, 80);   //local ip
+IPAddress ip(192, 168, 1, 2);   //local ip
 IPAddress gateway(0, 0, 0, 0);   //gateway
 IPAddress subnet(0, 0, 0, 0);    //subnet mask
 IPAddress DNS(0, 0, 0, 0);       //DNS server ip address
-IPAddress SNMPIP1(192, 168, 0, 5);   //Remote NMS for SNMP Informs #1
-IPAddress SNMPIP2(192, 168, 0, 5);   //Remote NMS for SNMP Informs #2
+IPAddress SNMPIP1(192, 168, 1, 5);   //Remote NMS for SNMP Informs #1
+IPAddress SNMPIP2(192, 168, 1, 6);   //Remote NMS for SNMP Informs #2
+byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
 String SiteID = "999999";          //Site ID, value read from SD card
 String SiteCity = "Springfield";      // Site City
 String SiteState = "FX";           // Site State

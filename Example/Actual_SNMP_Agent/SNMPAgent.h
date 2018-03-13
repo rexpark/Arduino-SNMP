@@ -10,7 +10,7 @@
 #include <ctype.h>
 #include "Arduino.h"
 #include <Ethernet.h>
-#include "ArduinoSNMP.h"
+#include <ArduinoSNMP.h> //add to your libraries folder
 #include "Time.h"
 #include "global.h"
 

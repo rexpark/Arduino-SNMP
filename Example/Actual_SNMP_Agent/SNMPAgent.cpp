@@ -12,8 +12,6 @@ SNMPAgent::SNMPAgent(boolean _debug): _send_tag_data(false){
 }
 
 void SNMPAgent::setup(){
-  //read in community strings and manager ip from EEPROM
-
   _oid_del = ".";
   snmp_inform_timeout = 60*SNMPTimeout;
 

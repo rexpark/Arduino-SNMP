@@ -49,7 +49,7 @@ SNMP_API_STAT_CODES SNMPClass::begin(const char *getCommName, const char *setCom
   if ( port == NULL || port == 0 ) port = SNMP_DEFAULT_PORT;
   //
   // init UDP socket
-  Udp.close();
+  Udp.stop();
   Udp.begin(port);
 
   return SNMP_API_STAT_SUCCESS;

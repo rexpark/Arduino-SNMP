@@ -1,5 +1,5 @@
 /*
-  ArduinoSNMP.h - An Arduino library for a lightweight SNMP Agent. v2.2
+  ArduinoSNMP.h - An Arduino library for a lightweight SNMP Agent. v2.3
   Copyright (C) 2013 Rex Park <rex.park@me.com>, Portions (C) 2010 Eric C. Gionet <lavco_eg@hotmail.com>
   All rights reserved.
 
@@ -295,24 +295,24 @@ typedef struct SNMP_OID {
     return size;
   }
   
-  byte fromString_P(prog_char *buffer){
-      clear();
+  // byte fromString_P(prog_char *buffer){
+  //     clear();
       
-      byte b_size = strlen_P(buffer);
-      byte n = 0;
-      for(byte i = 0; i <= b_size; i++){
-        char t[6];
-        if(pgm_read_byte(buffer+i) == '.' || n == 5 || pgm_read_byte(buffer+i) == '\0'){
-          t[n] = '\0';
-          data[size++] = atoi(t);
-          n = 0;
-        }else if(n < 5){
-          t[n++] = pgm_read_byte(buffer+i);
-        }
-      }
+  //     byte b_size = strlen_P(buffer);
+  //     byte n = 0;
+  //     for(byte i = 0; i <= b_size; i++){
+  //       char t[6];
+  //       if(pgm_read_byte(buffer+i) == '.' || n == 5 || pgm_read_byte(buffer+i) == '\0'){
+  //         t[n] = '\0';
+  //         data[size++] = atoi(t);
+  //         n = 0;
+  //       }else if(n < 5){
+  //         t[n++] = pgm_read_byte(buffer+i);
+  //       }
+  //     }
       
-      return size;
-    }
+  //     return size;
+  //   }
   
   /**
    * Copies OID data into a char buffer using dot notation.

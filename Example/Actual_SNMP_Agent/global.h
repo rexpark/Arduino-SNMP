@@ -3,16 +3,19 @@
 
 #include <arduino.h>
 #include <EthernetUdp.h>
-#include "ArduinoSNMP.h"
+#include <Time.h>
+#include <ArduinoSNMP.h> //add to your libraries folder
 #include "LinkedList.h"
 
 //System Global Setup vars
-//These should be saved/loaded from EEPROM or an SD Card.extern IPAddress ip;   //local ip
+//These should be saved/loaded from EEPROM or an SD Card.
+extern IPAddress ip;   //local ip
 extern IPAddress gateway;   //gateway
 extern IPAddress subnet;    //subnet mask
 extern IPAddress DNS;       //DNS server ip address
 extern IPAddress SNMPIP1;   //Remote NMS for SNMP Informs #1
 extern IPAddress SNMPIP2;   //Remote NMS for SNMP Informs #2
+extern byte mac[];
 extern String SiteID;          //Site ID, value read from SD card
 extern String SiteCity;      // Site City
 extern String SiteState;           // Site State
