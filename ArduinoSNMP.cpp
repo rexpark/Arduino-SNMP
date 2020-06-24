@@ -402,7 +402,9 @@ uint32_t SNMPClass::sendTrapv1(SNMP_PDU *pdu, SNMP_TRAP_TYPES trap_type, int16_t
   _packetPos += value.size;
   
   //Time Ticks
-  value.encode(SNMP_SYNTAX_TIME_TICKS, millis()/10, _packet + _packetPos);
+  //Similar error as previous commit in ArduinoSNMP.h.
+  //value.encode(SNMP_SYNTAX_TIME_TICKS, millis() / 10, _packet + _packetPos);
+  value.encode(SNMP_SYNTAX_TIME_TICKS, (const uint64_t)millis()/10, _packet + _packetPos);
   _packetPos +=6;//syntax + length + 4 octets
 
   //unknown
