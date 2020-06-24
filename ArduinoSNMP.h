@@ -966,7 +966,10 @@ typedef struct SNMP_PDU {
     t_v->OID.clear();
     t_v->clear();
     t_v->OID.fromString("1.3.6.1.2.1.1.3.0");//OID of the value type being sent
-    t_v->encode(SNMP_SYNTAX_TIME_TICKS, millis()/10);
+    //This line below causes error, millis() type doesn't have a definite type. 
+    //This produces different candidates for one overloaded function call.
+    //t_v->encode(SNMP_SYNTAX_TIME_TICKS, millis()/10);
+    t_v->encode(SNMP_SYNTAX_TIME_TICKS, (const uint16_t)millis()/10);
     value.size = add_data_private(t_v);
     
     //SNMPv2 trapOID
