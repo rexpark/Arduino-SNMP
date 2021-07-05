@@ -5,6 +5,9 @@ An updated and enhanced version of the Agentuino (http://code.google.com/p/agent
 
 Encoding updates referenced from Ruby-SNMP (https://github.com/hallidave/ruby-snmp).
 
+Example requires LinkedList library: https://github.com/ivanseidel/LinkedList
+    Please note iostream issue: https://github.com/ivanseidel/LinkedList/pull/48
+
 User Guide:
 ---------------------
 

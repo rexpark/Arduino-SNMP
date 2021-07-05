@@ -501,7 +501,7 @@ boolean SNMPAgent::process_mib2_command(){
 void SNMPAgent::process_inform_table(){
   for(byte i = 0; i < inform_holding_table.size(); i++){
 
-    tmp_entry = inform_holding_table.get(i);
+    tmp_entry = &inform_holding_table.get(i);
 
     if(now() - tmp_entry->last_sent > snmp_inform_timeout){//5 minutes, hard coded for now
       Serial.print("Resending inform ");
@@ -527,7 +527,7 @@ void SNMPAgent::process_inform_table(){
 boolean SNMPAgent::process_inform_response(){
   for(byte i = 0; i < inform_holding_table.size(); i++){
 
-    tmp_entry = inform_holding_table.get(i);
+    tmp_entry = &inform_holding_table.get(i);
 
     if(tmp_entry->request_id == _pdu.requestId){
       inform_holding_table.remove(i);
@@ -543,7 +543,7 @@ boolean SNMPAgent::remove_inform(uint32_t request_id){
 
   for(byte i = 0; i < inform_holding_table.size(); i++){
 
-    tmp_entry = inform_holding_table.get(i);
+    tmp_entry = &inform_holding_table.get(i);
 
     if(tmp_entry->request_id == request_id){
       inform_holding_table.remove(i);
