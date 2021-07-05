@@ -5,7 +5,7 @@
 #include <EthernetUdp.h>
 #include <Time.h>
 #include <ArduinoSNMP.h> //add to your libraries folder
-#include "LinkedList.h"
+#include <LinkedList.h>
 
 //System Global Setup vars
 //These should be saved/loaded from EEPROM or an SD Card.
