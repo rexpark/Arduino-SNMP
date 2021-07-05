@@ -1,4 +1,4 @@
-ArduinoSNMP v2.2
+ArduinoSNMP v2.3.1
 =============
 
 An updated and enhanced version of the Agentuino (http://code.google.com/p/agentuino/) SNMP library.
@@ -11,9 +11,10 @@ Example requires LinkedList library: https://github.com/ivanseidel/LinkedList
 User Guide:
 ---------------------
 
+July 5 2021 Update: The example agent is fairly memory intensive (~3000 bytes). If you plan to use this on a device with less memory then I suggest you learn to use the library on a MEGA 2560 then modify the example until it will fit. Moving the OIDs into PROGMEM is a good place to start.
+
 February 7 2018 Update: I've added the latest version of this library as well as a real world agent implementation (Example/Actual_SNMP_Agent). I'll try to answer any questions posted to the issues list. It's been a while since I've needed to work on this library so I'm not sure how accurate the information below is.
 
-Working Agent example coming soon.
 
 Setup:
 `SNMP.begin(snmp_read_community,snmp_read_write_community,snmp_trap_community,SNMP_DEFAULT_PORT)`
